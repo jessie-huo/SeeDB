@@ -1,1 +1,4 @@
 # SeeDB
+
+## Dependencies
+pip install psycopg2-binary
