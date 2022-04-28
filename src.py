@@ -1,3 +1,5 @@
+import os
+
 import psycopg2
 
 # params
@@ -18,13 +20,15 @@ def share_based_optimization(curs):
     """
 
 def create_tables(conn, curs):
-    curs.execute('create table all (age real, workclass text, fnlwgt real, education text, education_num real, marital_status text, occupation text, relationship text, race text, sex text, capital_gain real, capital_loss real, hours_per_week real, native_country text, economic_indicator text);')
-    curs.execute("copy all from CensusData/adults.all delimiter ',' csv;")
-    curs.execute("create table target as select * from all where marital_status in (' Married-AF-spouse', ' Married-civ-spouse', ' Married-spouse-absent', ' Separated');")
-    curs.execute("create table reference as select * from all except target;")
+    csv_filepath = os.getcwd() + '/CensusData/'
+    curs.execute('DROP TABLE IF EXISTS all_data')
+    curs.execute('create table all_data (age real, workclass text, fnlwgt real, education text, education_num real, marital_status text, occupation text, relationship text, race text, sex text, capital_gain real, capital_loss real, hours_per_week real, native_country text, economic_indicator text);')
+    curs.execute(f"copy all_data from '%s' delimiter ',' csv;" % (csv_filepath+'adult.all'))
+    curs.execute("create table target as select * from all_data where marital_status in (' Married-AF-spouse', ' Married-civ-spouse', ' Married-spouse-absent', ' Separated');")
+    curs.execute("create table reference as select * from all_data where marital_status in (' Widowed', ' Never-married', ' Divorced');")
     for i in range(n_phase):
         curs.execute('create table t{} (age real, workclass text, fnlwgt real, education text, education_num real, marital_status text, occupation text, relationship text, race text, sex text, capital_gain real, capital_loss real, hours_per_week real, native_country text, economic_indicator text);'.format(i + 1))
-        curs.execute("copy t{} from CensusData/phase_{} delimiter ',' csv;".format(i + 1, i + 1))
+        curs.execute("copy t{} from '{}phase_{}' delimiter ',' csv;".format(i + 1, csv_filepath, i + 1))
     conn.commit()
 
 def create_db_session():
