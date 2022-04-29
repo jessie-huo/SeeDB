@@ -1,9 +1,13 @@
+import math
 import os
 
 import psycopg2
+import numpy as np
 
 # params
 n_phase = 8
+delta = 0.02
+k = 5
 A = ['education', 'race', 'native_country']
 M = ['fnlwgt', 'capital_gain']
 F = ['avg', 'sum']
@@ -21,7 +25,7 @@ def share_based_optimization(curs):
 
 def create_tables(conn, curs):
     csv_filepath = os.getcwd() + '/CensusData/'
-    curs.execute('DROP TABLE IF EXISTS all_data')
+    curs.execute('DROP TABLE IF EXISTS all_data, target, reference, t1, t2, t3, t4, t5, t6, t7, t8')
     curs.execute('create table all_data (age real, workclass text, fnlwgt real, education text, education_num real, marital_status text, occupation text, relationship text, race text, sex text, capital_gain real, capital_loss real, hours_per_week real, native_country text, economic_indicator text);')
     curs.execute(f"copy all_data from '%s' delimiter ',' csv;" % (csv_filepath+'adult.all'))
     curs.execute("create table target as select * from all_data where marital_status in (' Married-AF-spouse', ' Married-civ-spouse', ' Married-spouse-absent', ' Separated');")
@@ -35,6 +39,40 @@ def create_db_session():
     conn = psycopg2.connect('dbname=test user=postgres password=secret host=localhost')
     curs = conn.cursor()
     return conn, curs
+
+def calculate_epsilon_m(m, N = n_phase, delta = delta):
+    return ((1-(m-1)/N)*((2*math.log2(math.log2(m)))+(math.log2(math.pi**2/3*delta)))/(2*m))**0.5
+
+# views_scores = {view_1:SOME_VALUE, view_2:SOME_VALUE, view_3:SOME_VALUE}
+# run once at end of each phase
+# implemented based of ref[37] pseudocode
+# assume views, views_scores only contains valid views (not including removed ones)
+def CI_pruning(views_scores, m):
+    global k
+    epsilon_m = calculate_epsilon_m(m)
+    stats = {}
+
+    # loop through each view to calculate mean, lowerbound, upperbound
+    for view, val in views_scores.items():
+        stats[view]["mean"] = np.mean(val)
+        stats[view]["upper"] = stats[view]["mean"] + epsilon_m
+        stats[view]["lower"] = stats[view]["mean"] - epsilon_m
+
+    # sort by upperbound, get top k views
+    views_sort_by_upper = sorted(stats, key=lambda x: (stats[x]['upper']), reverse=True) # return views name
+    top_k_views = views_sort_by_upper[:k]
+
+    # find min(lowerbound) of top_k_views
+    min_lower = stats[top_k_views[0]]["lower"]
+    for view in top_k_views:
+        min_lower = min(min_lower, stats[view]["lower"])
+
+    for view, stat in stats.items():
+        if view not in top_k_views:
+            if stat["upper"] < min_lower:
+                del views[view]
+
+
 
 if __name__ == '__main__':
     conn, curs = create_db_session()
