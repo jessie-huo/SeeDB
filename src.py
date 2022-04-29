@@ -12,6 +12,7 @@ A = ['education', 'race', 'native_country']
 M = ['fnlwgt', 'capital_gain']
 F = ['avg', 'sum']
 views = {}
+accept_views = []
 for a in A:
     for m in M:
         for f in F:
@@ -43,7 +44,8 @@ def create_db_session():
 def calculate_epsilon_m(m, N = n_phase, delta = delta):
     return ((1-(m-1)/N)*((2*math.log2(math.log2(m)))+(math.log2(math.pi**2/3*delta)))/(2*m))**0.5
 
-# views_scores = {view_1:SOME_VALUE, view_2:SOME_VALUE, view_3:SOME_VALUE}
+# views_scores = {view_1:SOME_VALUE(KL-divergence), view_2:SOME_VALUE, view_3:SOME_VALUE}
+# m = current phase
 # run once at end of each phase
 # implemented based of ref[37] pseudocode
 # assume views, views_scores only contains valid views (not including removed ones)
@@ -71,6 +73,26 @@ def CI_pruning(views_scores, m):
         if view not in top_k_views:
             if stat["upper"] < min_lower:
                 del views[view]
+
+# run once at end of each phase
+# implemented based of ref[37] pseudocode
+# assume views, views_scores only contains valid views (not including removed ones)
+# top-k-views  = accept_views + remaining_ones_in_views (sort by mean)
+def MAB_pruning(views_scores):
+    # loop through each view to calculate mean
+    stats = {}
+    for view, val in views_scores.items():
+        stats[view]["mean"] = np.mean(val)
+
+    # sort by mean
+    views_sort_by_mean = sorted(stats, key=lambda x: (stats[x]['mean']), reverse=True)  # return views name
+    delta_1 = stats[views_sort_by_mean[0]]["mean"] - stats[views_sort_by_mean[k]]["mean"]
+    delta_n = stats[views_sort_by_mean[k-1]]["mean"] - stats[views_sort_by_mean[-1]]["mean"]
+    if delta_1 > delta_n:
+        accept_views.append(views_sort_by_mean[0])
+        del views[views_sort_by_mean[0]]
+    else:
+        del views[views_sort_by_mean[-1]]
 
 
 
