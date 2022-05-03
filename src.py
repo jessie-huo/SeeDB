@@ -1,6 +1,5 @@
 import math
 import os
-
 import psycopg2
 import numpy as np
 
@@ -28,16 +27,20 @@ def create_tables(conn, curs):
     csv_filepath = os.getcwd() + '/CensusData/'
     curs.execute('DROP TABLE IF EXISTS all_data, target, reference, t1, t2, t3, t4, t5, t6, t7, t8')
     curs.execute('create table all_data (age real, workclass text, fnlwgt real, education text, education_num real, marital_status text, occupation text, relationship text, race text, sex text, capital_gain real, capital_loss real, hours_per_week real, native_country text, economic_indicator text);')
-    curs.execute(f"copy all_data from '%s' delimiter ',' csv;" % (csv_filepath+'adult.all'))
+    f = open(csv_filepath + 'adult.all')
+    curs.copy_from(f, 'all_data', sep=',')
+    f.close()
     curs.execute("create table target as select * from all_data where marital_status in (' Married-AF-spouse', ' Married-civ-spouse', ' Married-spouse-absent', ' Separated');")
     curs.execute("create table reference as select * from all_data where marital_status in (' Widowed', ' Never-married', ' Divorced');")
     for i in range(n_phase):
         curs.execute('create table t{} (age real, workclass text, fnlwgt real, education text, education_num real, marital_status text, occupation text, relationship text, race text, sex text, capital_gain real, capital_loss real, hours_per_week real, native_country text, economic_indicator text);'.format(i + 1))
-        curs.execute("copy t{} from '{}phase_{}' delimiter ',' csv;".format(i + 1, csv_filepath, i + 1))
+        f = open(csv_filepath + 'phase_' + str(i + 1))
+        curs.copy_from(f, 't' + str(i + 1), sep=',')
+        f.close()
     conn.commit()
 
 def create_db_session():
-    conn = psycopg2.connect('dbname=test user=postgres password=secret host=localhost')
+    conn = psycopg2.connect('dbname=jhuo user=jhuo host=cs645db.cs.umass.edu port=7645')
     curs = conn.cursor()
     return conn, curs
 
