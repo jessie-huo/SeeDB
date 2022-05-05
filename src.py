@@ -17,11 +17,14 @@ for a in A:
         for f in F:
             views[len(views)] = [a, m, f]
 
-def share_based_optimization(curs):
-    """
-    for x in ['target', 'reference']:
-        curs.execute('select {} '.format(','.join(A)))
-    """
+def share_based_optimization(curs, table_name):
+    clause1 = ','.join(A)
+    clause3 = '(' + '),('.join(A) + ')'
+    clause2 = []
+    for i, [_, m, f] in views.items():
+        clause2.append('{}({}) as view{}'.format(f, m, i))
+    clause2 = ','.join(clause2)
+    curs.execute('select {}, {} from {} group by grouping sets ({});'.format(clause1, clause2, table_name, clause3))
 
 def create_tables(conn, curs):
     csv_filepath = os.getcwd() + '/CensusData/'
@@ -102,4 +105,5 @@ def MAB_pruning(views_scores):
 if __name__ == '__main__':
     conn, curs = create_db_session()
     create_tables(conn, curs)
-    share_based_optimization(curs)
+    share_based_optimization(curs, 'target')
+    share_based_optimization(curs, 'reference')
