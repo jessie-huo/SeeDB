@@ -170,6 +170,16 @@ if __name__ == '__main__':
     conn, curs = create_db_session()
     create_tables(conn, curs)
 
+    # plot paper fig 1
+    curs.execute("SELECT sex, avg(capital_gain) FROM target GROUP BY sex;")
+    target = dict(curs.fetchall())
+    curs.execute("SELECT sex, avg(capital_gain) FROM reference GROUP BY sex;")
+    reference = dict(curs.fetchall())
+    file = open("plot_data.txt", "a")
+    for s in ['sex', 'capital_gain', 'avg', target, reference]:
+        file.write(str(s) + '\n')
+    file.close()
+
     # share based optim
     share_based_optimization(conn, curs, 'target', 'tar')
     share_based_optimization(conn, curs, 'reference', 'ref')

@@ -3,11 +3,11 @@ import numpy as np
 
 def plot(a, m, f, target_dict, reference_dict, fig_name): # target and reference dictionary both with format {a:f(m)}
     x_coordinates = np.arange(len(target_dict))
-    width = 0.2
+    width = 0.5
     plt.subplots()
     plt.xlabel(a)
     plt.ylabel('{}({})'.format(f, m))
-    plt.xticks(x_coordinates + 0.5 * width, target_dict.keys())
+    plt.xticks(x_coordinates + 0.5 * width, target_dict.keys(), rotation=90)
     plt.bar(x_coordinates, target_dict.values(), width, label='target')
     plt.bar(x_coordinates + width, reference_dict.values(), width, label='reference')
     plt.legend()
@@ -24,5 +24,8 @@ while True:
     f = file.readline()
     target = eval(file.readline())
     reference = eval(file.readline())
-    plot(a, m, f, target, reference, 'topK_{}'.format(count))
+    if count == 0:
+        plot(a, m, f, target, reference, 'fig1')
+    else:
+        plot(a, m, f, target, reference, 'topK_{}'.format(count))
     count += 1

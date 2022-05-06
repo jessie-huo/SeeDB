@@ -1,3 +1,8 @@
+sex
+capital_gain
+avg
+{' Female': 1169.3877005347595, ' Male': 1725.7576077565518}
+{' Female': 403.9198522325731, ' Male': 621.7219871360867}
 age
 capital_gain
 avg
