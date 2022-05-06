@@ -9,9 +9,9 @@ import copy
 n_phase = 8
 delta = 0.02
 k = 5
-A = ['education', 'race', 'native_country']
-M = ['fnlwgt', 'capital_gain']
-F = ['avg', 'sum']
+A = ['age', 'workclass', 'education', 'occupation', 'race', 'native_country']
+M = ['age', 'capital_loss', 'capital_gain']
+F = ['avg', 'sum', 'max']
 views = {}
 for a in A:
     for m in M:
@@ -87,6 +87,8 @@ def CI_pruning(views, views_scores, m):
 
     # loop through each view to calculate mean, lowerbound, upperbound
     for view, val in views_scores.items():
+        if view not in stats:
+            stats[view] = {}
         stats[view]["mean"] = np.mean(val)
         stats[view]["upper"] = stats[view]["mean"] + epsilon_m
         stats[view]["lower"] = stats[view]["mean"] - epsilon_m
@@ -115,10 +117,14 @@ def MAB_pruning(views, views_scores):
     # loop through each view to calculate mean
     stats = {}
     for view, val in views_scores.items():
+        if view not in stats:
+            stats[view] = {}
         stats[view]["mean"] = np.mean(val)
 
     # sort by mean
     views_sort_by_mean = sorted(stats, key=lambda x: (stats[x]['mean']), reverse=True)  # return views name
+    print(len(stats))
+    print(len(views_sort_by_mean))
     delta_1 = stats[views_sort_by_mean[0]]["mean"] - stats[views_sort_by_mean[k]]["mean"]
     delta_n = stats[views_sort_by_mean[k-1]]["mean"] - stats[views_sort_by_mean[-1]]["mean"]
     if delta_1 > delta_n:
@@ -154,10 +160,10 @@ def plot(view_id, curs):
     for k in set(reference.keys()) - common_keys:
         del reference[k]
     # write plotting data to file for later use
-    f = open("plot_data.txt", "a")
+    file = open("plot_data.txt", "a")
     for s in [a, m, f, target, reference]:
-        f.write(str(s) + '\n')
-    f.close()
+        file.write(str(s) + '\n')
+    file.close()
 
 
 if __name__ == '__main__':
@@ -185,14 +191,15 @@ if __name__ == '__main__':
     print('The views ordered by KL divergence distance score: ', ranked_views)
     
     # plot top 3 views
-    for id, _ in ranked_views[:3]:
-        plot(id, curs)
+    #for id, _ in ranked_views[:3]:
+    #    plot(id, curs)
     
     # Pruning
     remaining_views = copy.deepcopy(views)
     remaining_dists = {i:[] for i in range(len(views))}
 
     for i in range(1, n_phase + 1):
+        print('phase {} ==============='.format(i))
         # Share
         share_based_optimization(conn, curs, 't{}_tar'.format(i), 'tar{}'.format(i))
         share_based_optimization(conn, curs, 't{}_ref'.format(i), 'ref{}'.format(i))
@@ -207,10 +214,13 @@ if __name__ == '__main__':
             remaining_dists[id].append(dist)
         
         # CI prune
-        remaining_views, remaining_dists = CI_pruning(remaining_views, remaining_dists, i)
+        if i > 1:
+            remaining_views, remaining_dists = CI_pruning(remaining_views, remaining_dists, i)
 
         # MAB prune
-        remaining_views, remaining_dists = MAB_pruning(remaining_views, remaining_dists)
+        print(len(remaining_dists))
+        if len(remaining_dists) > k:
+            remaining_views, remaining_dists = MAB_pruning(remaining_views, remaining_dists)
 
     # plot top K views (those in accept_views and if not enough, find in remaining views and sort by mean)
     if len(accept_views) >= k:
